@@ -1,6 +1,8 @@
+require 'digest/sha1'
+
 module Errata
   
-  class Capture
+  class Erratum
     
     VALID_ENV = [
         "SERVER_NAME",
@@ -29,20 +31,21 @@ module Errata
     attr_reader :parameters
     attr_reader :time
     attr_reader :env
+    attr_reader :sha1
     
     def initialize( error, request )
       @error = error
       @time = Time.now
-      
       @port = Integer( request.env["SERVER_PORT"] )
       @env = request.env
       @request_method = request.request_method
       @parameters = request.parameters
-      
+      @sha1 = Digest::SHA1.hexdigest( "#{@port}-#{@time}-#{@error.message}-#{@parameters.inspect}")
     end
     
     def to_json( *args )
       {
+        'sha1' => sha1,
         'time' => time,
         'port' => port,
         'request_method' => request_method,
