@@ -12,7 +12,7 @@ module Errata
       dir
     end
     
-    def self.log_or_ignore( error, request )
+    def self.log( error, request )
       write( Erratum.new( error, request ) )
     end
     
@@ -31,27 +31,35 @@ module Errata
       end
     end
     
-    def self.write_json( file, data )
-      File.open( file, "w" ) do |file|
+    def self.write_json( file, lock, data )
+      File.open( file, 'w' ) do |file|
+        file.flock( File::LOCK_EX ) if lock
         file.write( data.to_json )
+        file.flock( File::LOCK_UN ) if lock
       end
     end
     
-    def self.process_json( file, default, &blk )
-      write_json( file, yield( read_json( file, default ) ) )
+    def self.process_json( file, lock, default, &blk )
+      write_json( file, lock, yield( read_json( file, default ) ) )
     end
     
-    def self.register( capture )
-      process_json( File.join( errata_dir, "errata_idx.json" ), [] ) do |json|
-        json.push( capture.port ).uniq
+    def self.cleanup( json )
+      if json.length < KEEP_ERRORS
+        json
+      else
+        while json.length >= KEEP_ERRORS
+          sha1 = json.shift
+          File.unlink( File.join( errata_dir, "#{sha1}.json" ) )
+        end
+        json
       end
-      @@registered = true
     end
     
     def self.write( capture )
-      register( capture ) unless @@registered
-      process_json( File.join( errata_dir, "errata_#{capture.port}.json" ), [] ) do |json|
-        json.push( capture )
+      write_json( File.join( errata_dir, "#{capture.sha1}.json" ), false, capture.to_json )
+      process_json( File.join( errata_dir, "index.json" ), true, [] ) do |json|
+        json = cleanup( json )
+        json.push( capture.sha1 )
       end
     end
     

@@ -8,7 +8,7 @@ module Errata
     end
     
     def rescue_action_in_public_with_errata( error )
-      Errata::Logger.log_or_ignore( error, request )
+      Errata::Logger.log( error, request )
       rescue_action_in_public_without_errata( error )
     end
     
