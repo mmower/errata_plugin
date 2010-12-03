@@ -1,0 +1,1 @@
+1.0 - 03/12/2010 - Initial version of the plugin ready for use

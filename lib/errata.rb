@@ -5,7 +5,7 @@ require 'errata/logger'
 
 module Errata
   
-  KEEP_ERRORS = 5
+  KEEP_ERRORS = 100
   
   def self.enabled?
     true
