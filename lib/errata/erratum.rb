@@ -39,11 +39,22 @@ module Errata
       @sha1        = Digest::SHA1.hexdigest( "#{@time}-#{@error.message}-#{@parameters.inspect}")
     end
     
+    def extract_headers( headers )
+      headers.inject( {} ) do |hash,pair|
+        name,value = pair
+        if name.match( /HTTP_/ )
+          name = name.sub( "HTTP_", "" ).split( '_' ).collect { |_| _.capitalize }.join( '-' )
+          hash[name] = value.to_s
+        end
+        hash
+      end
+    end
+    
     def to_json( *args )
       {
         'sha1' => sha1,
         'time' => time,
-        'server_port' => port,
+        'server_port' => server_port,
         'request' => {
           'remote_ip' => request.remote_ip,
           'protocol' => request.protocol,
@@ -52,16 +63,17 @@ module Errata
           'domain' => request.domain,
           'format' => request.format,
           'method' => request.method,
-          'headers' => request.headers,
+          'headers' => extract_headers( request.headers ),
           'url' => request.url,
           'query_string' => request.query_string,
         },
+        'session' => request.session,
         'parameters' => request.parameters,
         'error' => {
           'message' => error.message,
           'back_trace' => error.backtrace
         },
-        'env' => env.slice( *VALID_ENV )
+        'env' => request.env.slice( *VALID_ENV )
       }.to_json
     end
     
