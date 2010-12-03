@@ -53,7 +53,7 @@ module Errata
     def to_json( *args )
       {
         'sha1' => sha1,
-        'time' => time,
+        'when' => time,
         'server_port' => server_port,
         'request' => {
           'remote_ip' => request.remote_ip,
@@ -63,10 +63,10 @@ module Errata
           'domain' => request.domain,
           'format' => request.format,
           'method' => request.method,
-          'headers' => extract_headers( request.headers ),
           'url' => request.url,
           'query_string' => request.query_string,
         },
+        'headers' => extract_headers( request.headers ),
         'session' => request.session,
         'parameters' => request.parameters,
         'error' => {
