@@ -56,7 +56,7 @@ module Errata
     end
     
     def self.write( capture )
-      write_json( File.join( errata_dir, "#{capture.sha1}.json" ), false, capture.to_json )
+      write_json( File.join( errata_dir, "#{capture.sha1}.json" ), false, capture )
       process_json( File.join( errata_dir, "index.json" ), true, [] ) do |json|
         json = cleanup( json )
         json.push( capture.sha1 )
