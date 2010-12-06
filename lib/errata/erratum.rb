@@ -53,7 +53,7 @@ module Errata
     def to_json( *args )
       {
         'sha1' => sha1,
-        'when' => time,
+        'when' => time.iso8601,
         'server_port' => server_port,
         'request' => {
           'remote_ip' => request.remote_ip,
