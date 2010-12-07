@@ -49,7 +49,11 @@ module Errata
       else
         while json.length >= KEEP_ERRORS
           sha1 = json.shift
-          File.unlink( File.join( errata_dir, "#{sha1}.json" ) )
+          begin
+            File.unlink( File.join( errata_dir, "#{sha1}.json" ) )
+          rescue => err
+            RAILS_DEFAULT_LOGGER.error( "errata: unable to clean up #{File.join( errata_dir, "#{sha1}.json" )}: #{err.message}")
+          end
         end
         json
       end

@@ -50,6 +50,23 @@ module Errata
       end
     end
     
+    def process_backtrace( backtrace )
+      backtrace.collect do |line|
+        file_name, line_num, meth_name = line.split( ':' )
+        meth_name = if meth_name
+          meth_name.sub( /in `(.*)'/, '\1' )
+        else
+          ""
+        end
+        
+        {
+          'file' => file_name,
+          'line' => line_num,
+          'method' => meth_name
+        }
+      end
+    end
+    
     def to_json( *args )
       {
         'sha1' => sha1,
@@ -70,8 +87,9 @@ module Errata
         'session' => request.session,
         'parameters' => request.parameters,
         'error' => {
+          'class' => error.class.name,
           'message' => error.message,
-          'back_trace' => error.backtrace
+          'back_trace' => process_backtrace( error.backtrace )
         },
         'env' => request.env.slice( *VALID_ENV )
       }.to_json
