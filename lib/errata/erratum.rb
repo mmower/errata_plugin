@@ -98,7 +98,7 @@ module Errata
           'host' => request.host,
           'port' => request.port,
           'domain' => request.domain,
-          'format' => request.format['string'],
+          'format' => request.format,
           'method' => request.method.to_s.upcase,
           'url' => request.url,
           'query_string' => request.query_string,
