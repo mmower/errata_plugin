@@ -31,6 +31,10 @@ module Errata
     attr_reader :server_port
     attr_reader :request
     
+    PLUGIN_PATH = File.join( RAILS_ROOT, "vendor", "plugins" )
+    RAILS_PATH = File.join( RAILS_ROOT, "vendor", "rails" )
+    LIB_PATHS = $LOAD_PATH.reject { |path| path == "." }
+    
     def initialize( error, request )
       @error       = error
       @time        = Time.now
@@ -53,13 +57,29 @@ module Errata
     def process_backtrace( backtrace )
       backtrace.collect do |line|
         file_name, line_num, meth_name = line.split( ':' )
+        
         meth_name = if meth_name
           meth_name.sub( /in `(.*)'/, '\1' )
         else
           ""
         end
         
+        file_path, file_name = if file_name =~ /^#{RAILS_PATH}/
+          [RAILS_PATH, File.join( "[RAILS]", file_name.sub( /^#{RAILS_PATH}/, '' ))]
+        elsif file_name =~ /^#{PLUGIN_PATH}/
+          [PLUGIN_PATH, File.join( "[PLUGINS]", file_name.sub( /^#{PLUGIN_PATH}/, '' ))]
+        elsif file_name =~ /^#{RAILS_ROOT}/
+          [RAILS_ROOT, File.join( "[PROJ]", file_name.sub( /^#{RAILS_ROOT}/, '' ))]
+        elsif ( gem_path = Gem.path.find { |path| file_name =~ /^#{path}/ } )
+          [gem_path, File.join( "[GEM]", file_name.sub( /#{gem_path}/, '' ))]
+        elsif ( lib_path = LIB_PATHS.find { |path| file_name =~ /^#{path}/ } )
+          [lib_path, File.join( "[LIB]", file_name.sub( /#{lib_path}/, '' ))]
+        else
+          ["", file_name]
+        end
+        
         {
+          'path' => file_path,
           'file' => file_name,
           'line' => line_num,
           'method' => meth_name
