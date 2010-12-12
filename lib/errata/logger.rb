@@ -4,7 +4,6 @@ require 'json'
 module Errata
   
   class Logger
-    @@registered = false
     
     def self.errata_dir
       dir = File.join( RAILS_ROOT, 'public', 'errata' )
@@ -23,19 +22,15 @@ module Errata
     end
     
     def self.cleanup( json )
-      if json.length < KEEP_ERRORS
-        json
-      else
-        while json.length >= KEEP_ERRORS
-          sha1 = json.shift
-          begin
-            File.unlink( errata_path( "#{sha1}.json" ) )
-          rescue => err
-            RAILS_DEFAULT_LOGGER.error( "errata: unable to clean up #{File.join( errata_dir, "#{sha1}.json" )}: #{err.message}")
-          end
+      while json.length >= KEEP_ERRORS
+        sha1 = json.shift
+        begin
+          File.unlink( errata_path( "#{sha1}.json" ) )
+        rescue => err
+          RAILS_DEFAULT_LOGGER.error( "errata: unable to clean up #{errata_path( "#{sha1}.json" )}: #{err.message}")
         end
-        json
       end
+      json
     end
     
     def self.write_erratum( erratum )
@@ -44,14 +39,14 @@ module Errata
       end
     end
     
-    def self.append( json, sha1 )
+    def self.append_hash( json, sha1 )
       data = if json.length > 0
         begin
-          JSON.parse( json )
+          cleanup( JSON.parse( json ) )
         rescue => error
           # The index file has been corrupted, this is not
           # a very ideal situation to find ourselves in.
-          puts "Parsing error: #{error.message}"
+          RAILS_DEFAULT_LOGGER.error( "errata: index.json did not parse!" )
           []
         end
       else
@@ -65,7 +60,7 @@ module Errata
       File.open( errata_path( 'index.json' ), 'a+') do |file|
         file.flock( File::LOCK_EX )
         file.pos = 0
-        data = append( file.read, sha1 )
+        data = append_hash( file.read, sha1 )
         file.truncate( 0 )
         file.write data
         file.flock( File::LOCK_UN )
