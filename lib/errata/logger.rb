@@ -12,35 +12,14 @@ module Errata
       dir
     end
     
+    def self.errata_path( path )
+      File.join( errata_dir, path )
+    end
+    
     def self.log( error, request )
-      write( Erratum.new( error, request ) )
-    end
-    
-    def self.read_json( file, default )
-      if File.exists?( file )
-        File.open( file, "r" ) do |file|
-          json = file.read
-          if json.length > 0
-            JSON.parse( json )
-          else
-            default
-          end
-        end
-      else
-        default
-      end
-    end
-    
-    def self.write_json( file, lock, data )
-      File.open( file, 'w' ) do |file|
-        file.flock( File::LOCK_EX ) if lock
-        file.write( data.to_json )
-        file.flock( File::LOCK_UN ) if lock
-      end
-    end
-    
-    def self.process_json( file, lock, default, &blk )
-      write_json( file, lock, yield( read_json( file, default ) ) )
+      erratum = Erratum.new( error, request )
+      write_erratum( erratum )
+      update_index( erratum.sha1 )
     end
     
     def self.cleanup( json )
@@ -50,7 +29,7 @@ module Errata
         while json.length >= KEEP_ERRORS
           sha1 = json.shift
           begin
-            File.unlink( File.join( errata_dir, "#{sha1}.json" ) )
+            File.unlink( errata_path( "#{sha1}.json" ) )
           rescue => err
             RAILS_DEFAULT_LOGGER.error( "errata: unable to clean up #{File.join( errata_dir, "#{sha1}.json" )}: #{err.message}")
           end
@@ -59,11 +38,37 @@ module Errata
       end
     end
     
-    def self.write( capture )
-      write_json( File.join( errata_dir, "#{capture.sha1}.json" ), false, capture )
-      process_json( File.join( errata_dir, "index.json" ), true, [] ) do |json|
-        # json = cleanup( json )
-        json.push( capture.sha1 )
+    def self.write_erratum( erratum )
+      File.open( errata_path( "#{erratum.sha1}.json" ), "w" ) do |file|
+        file.write( erratum.to_json )
+      end
+    end
+    
+    def self.append( json, sha1 )
+      data = if json.length > 0
+        begin
+          JSON.parse( json )
+        rescue => error
+          # The index file has been corrupted, this is not
+          # a very ideal situation to find ourselves in.
+          puts "Parsing error: #{error.message}"
+          []
+        end
+      else
+        []
+      end
+      data.push( sha1 )
+      data.to_json
+    end
+    
+    def self.update_index( sha1 )
+      File.open( errata_path( 'index.json' ), 'a+') do |file|
+        file.flock( File::LOCK_EX )
+        file.pos = 0
+        data = append( file.read, sha1 )
+        file.truncate( 0 )
+        file.write data
+        file.flock( File::LOCK_UN )
       end
     end
     
